@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "mod.gottsch.forge.evercrops.farmersdelight.core.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "evercrops_farmersdelight.refmap.json",
+  "mixins": [
+    "BuddingBushBlockMixin",
+    "RiceBlockMixin",
+    "TomatoBlockMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
