@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with EverCrops: Farmer's Delight.  If not, see <http://www.gnu.org/licenses/lgpl>.
  */
-package mod.gottsch.forge.evercrops.farmersdelight;
+package mod.gottsch.neo.evercrops.farmersdelight;
 
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;

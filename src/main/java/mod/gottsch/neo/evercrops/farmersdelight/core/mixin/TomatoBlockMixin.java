@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with EverCrops: Farmer's Delight.  If not, see <http://www.gnu.org/licenses/lgpl>.
  */
-package mod.gottsch.forge.evercrops.farmersdelight.core.mixin;
+package mod.gottsch.neo.evercrops.farmersdelight.core.mixin;
 
 import mod.gottsch.forge.evercrops.core.persistence.CropCatchUp;
 import mod.gottsch.forge.evercrops.core.persistence.CropRegistry;
@@ -39,8 +39,15 @@ import java.util.Optional;
 /**
  * Catch-up growth for Farmer's Delight TomatoBlock.
  * TomatoBlock overrides CropBlock.randomTick, so it is not covered by EverCrops's CropBlockMixin.
- * Only applies to ground-planted tomatoes (ROPELOGGED=false); rope variants have
- * different multi-block mechanics and are skipped.
+ * Applies to ground-planted tomatoes (ROPELOGGED=false) and hanging/rope-climbing tomatoes
+ * (HangingTomatoBlock, introduced in FD 1.3.0). Only old-style ROPELOGGED=true ground blocks
+ * are skipped — those are a deprecated back-compat state; HangingTomatoBlock is the live path.
+ *
+ * HangingTomatoBlock extends TomatoBlock but does NOT register ROPELOGGED in its state
+ * definition, yet it inherits TomatoBlock.randomTick unchanged. All getValue(ROPELOGGED) calls
+ * must be guarded with hasProperty(ROPELOGGED) to prevent IllegalArgumentException.
+ * The guard uses AND (not OR) so that HangingTomatoBlock — which has no ROPELOGGED property —
+ * falls through to the catch-up path rather than being skipped.
  *
  * @author Mark Gottschling on 2026-05-03
  */
@@ -61,7 +68,10 @@ public abstract class TomatoBlockMixin extends CropBlock {
         // Using getAgeProperty() via virtual dispatch ensures we advance the correct property.
         IntegerProperty ageProperty = this.getAgeProperty();
         if (!state.hasProperty(ageProperty)) return;
-        if (state.getValue(TomatoBlock.ROPELOGGED)) return;
+        // Skip only old-style ROPELOGGED=true ground tomatoes (deprecated back-compat state).
+        // HangingTomatoBlock has no ROPELOGGED property → hasProperty() is false → AND short-circuits
+        // → falls through to catch-up. Using || here would incorrectly skip HangingTomatoBlock.
+        if (state.hasProperty(TomatoBlock.ROPELOGGED) && state.getValue(TomatoBlock.ROPELOGGED)) return;
 
         Optional<CropState> existing = CropRegistry.get(level, pos);
         if (existing.isEmpty()) {
@@ -89,8 +99,9 @@ public abstract class TomatoBlockMixin extends CropBlock {
             target = "Lnet/minecraft/server/level/ServerLevel;setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z"))
     public void everCropsFD_randomTick_setBlock(BlockState state, ServerLevel level, BlockPos pos,
                                                 RandomSource random, CallbackInfo ci) {
-        if (!state.hasProperty(CropBlock.AGE)) return;
-        if (state.getValue(TomatoBlock.ROPELOGGED)) return;
+        // TomatoBlock.VINE_AGE = BlockStateProperties.AGE_3, NOT CropBlock.AGE (AGE_7) — different instances.
+        if (!state.hasProperty(TomatoBlock.VINE_AGE)) return;
+        if (state.hasProperty(TomatoBlock.ROPELOGGED) && state.getValue(TomatoBlock.ROPELOGGED)) return;
         Optional<CropState> cropState = CropRegistry.get(level, pos);
         if (cropState.isPresent()) {
             cropState.get().setLastGrowthGameTime(level.getGameTime())
