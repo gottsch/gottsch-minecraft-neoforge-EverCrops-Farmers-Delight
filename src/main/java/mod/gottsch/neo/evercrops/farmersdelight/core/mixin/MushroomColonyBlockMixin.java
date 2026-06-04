@@ -66,7 +66,7 @@ public abstract class MushroomColonyBlockMixin extends BushBlock {
         super(properties);
     }
 
-    @Inject(method = "randomTick", at = @At("HEAD"))
+    @Inject(method = "randomTick", at = @At("HEAD"), cancellable = true)
     public void everCropsFD_randomTick(BlockState state, ServerLevel level, BlockPos pos,
                                        RandomSource random, CallbackInfo ci) {
         if (!state.hasProperty(MushroomColonyBlock.COLONY_AGE)) return;
@@ -78,6 +78,7 @@ public abstract class MushroomColonyBlockMixin extends BushBlock {
         }
         CropState cropState = existing.get();
         int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, false);
+        boolean grewAny = false;
         if (steps > 0) {
             MushroomColonyBlock colonyBlock = (MushroomColonyBlock)(Object) this;
             int maxAge = colonyBlock.getMaxAge();
@@ -94,9 +95,16 @@ public abstract class MushroomColonyBlockMixin extends BushBlock {
                 currentState = currentState.setValue(MushroomColonyBlock.COLONY_AGE, age + 1);
                 level.setBlock(pos, currentState, 2);
                 CommonHooks.fireCropGrowPost(level, pos, currentState);
+                grewAny = true;
             }
         }
         CropRegistry.put(level, pos, cropState);
+        // Catch-up advanced the colony this tick. Skip vanilla's own randomTick so it can't
+        // overwrite the caught-up age (computed from the pre-catch-up state) nor double-write
+        // the growth timestamp via the setBlock inject below.
+        if (grewAny) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "randomTick", at = @At(value = "INVOKE",

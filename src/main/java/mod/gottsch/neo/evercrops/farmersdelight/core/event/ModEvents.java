@@ -18,6 +18,7 @@
 package mod.gottsch.neo.evercrops.farmersdelight.core.event;
 
 import mod.gottsch.neo.evercrops.farmersdelight.EverCropsFD;
+import mod.gottsch.forge.evercrops.core.persistence.CropBlockPredicates;
 import mod.gottsch.forge.evercrops.core.persistence.CropCatchUp;
 import mod.gottsch.forge.evercrops.core.persistence.CropRegistry;
 import net.minecraft.core.BlockPos;
@@ -41,6 +42,15 @@ import vectorwing.farmersdelight.common.block.TomatoBlock;
  */
 @EventBusSubscriber(modid = EverCropsFD.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 public class ModEvents {
+
+    /**
+     * Explicitly register this mod's crop predicate with the shared cleanup set.
+     * Called from {@link mod.gottsch.neo.evercrops.farmersdelight.EverCropsFD} constructor
+     * so registration is guaranteed before any game events fire.
+     */
+    public static void registerPredicates() {
+        CropBlockPredicates.register(ModEvents::isTracked);
+    }
 
     @SubscribeEvent
     public static void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
