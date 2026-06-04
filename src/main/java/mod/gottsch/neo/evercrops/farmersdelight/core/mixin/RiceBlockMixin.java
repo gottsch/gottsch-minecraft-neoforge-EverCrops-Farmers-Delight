@@ -54,7 +54,7 @@ public abstract class RiceBlockMixin extends BushBlock {
         super(properties);
     }
 
-    @Inject(method = "randomTick", at = @At("HEAD"))
+    @Inject(method = "randomTick", at = @At("HEAD"), cancellable = true)
     public void everCropsFD_randomTick(BlockState state, ServerLevel level, BlockPos pos,
                                        RandomSource random, CallbackInfo ci) {
         if (!state.hasProperty(RiceBlock.AGE)) return;
@@ -66,6 +66,7 @@ public abstract class RiceBlockMixin extends BushBlock {
         }
         CropState cropState = existing.get();
         int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, true);
+        boolean grewAny = false;
         if (steps > 0) {
             BlockState currentState = state;
             for (int i = 0; i < steps; i++) {
@@ -74,10 +75,17 @@ public abstract class RiceBlockMixin extends BushBlock {
                     currentState = currentState.setValue(RiceBlock.AGE, age + 1);
                     level.setBlock(pos, currentState, 2);
                     CommonHooks.fireCropGrowPost(level, pos, currentState);
+                    grewAny = true;
                 }
             }
         }
         CropRegistry.put(level, pos, cropState);
+        // Catch-up advanced the rice this tick. Skip vanilla's own randomTick so it can't
+        // overwrite the caught-up age nor double-write the growth timestamp. The panicle
+        // placement still runs on the next natural random tick once rice sits at MAX_AGE.
+        if (grewAny) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "randomTick", at = @At(value = "INVOKE",

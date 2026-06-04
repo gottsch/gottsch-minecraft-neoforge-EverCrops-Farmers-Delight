@@ -17,6 +17,7 @@
  */
 package mod.gottsch.neo.evercrops.farmersdelight;
 
+import mod.gottsch.neo.evercrops.farmersdelight.core.event.ModEvents;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -34,5 +35,6 @@ public class EverCropsFD {
     public static final String MOD_ID = "evercrops_farmersdelight";
 
     public EverCropsFD(IEventBus modEventBus, ModContainer modContainer) {
+        ModEvents.registerPredicates();
     }
 }

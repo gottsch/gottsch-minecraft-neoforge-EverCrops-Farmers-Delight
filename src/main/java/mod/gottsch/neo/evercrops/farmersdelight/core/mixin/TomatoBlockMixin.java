@@ -61,7 +61,7 @@ public abstract class TomatoBlockMixin extends CropBlock {
         super(properties);
     }
 
-    @Inject(method = "randomTick", at = @At("HEAD"))
+    @Inject(method = "randomTick", at = @At("HEAD"), cancellable = true)
     public void everCropsFD_randomTick(BlockState state, ServerLevel level, BlockPos pos,
                                        RandomSource random, CallbackInfo ci) {
         // TomatoBlock.getAgeProperty() returns VINE_AGE, not CropBlock.AGE.
@@ -80,6 +80,7 @@ public abstract class TomatoBlockMixin extends CropBlock {
         }
         CropState cropState = existing.get();
         int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, true);
+        boolean grewAny = false;
         if (steps > 0) {
             BlockState currentState = state;
             int maxAge = this.getMaxAge();
@@ -89,10 +90,17 @@ public abstract class TomatoBlockMixin extends CropBlock {
                     currentState = currentState.setValue(ageProperty, age + 1);
                     level.setBlock(pos, currentState, 2);
                     CommonHooks.fireCropGrowPost(level, pos, currentState);
+                    grewAny = true;
                 }
             }
         }
         CropRegistry.put(level, pos, cropState);
+        // Catch-up advanced the vine this tick. Skip vanilla's own randomTick so it can't
+        // overwrite the caught-up age nor double-write the growth timestamp. Fruit growth /
+        // rope climbing still runs on the next natural random tick once the vine is mature.
+        if (grewAny) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "randomTick", at = @At(value = "INVOKE",

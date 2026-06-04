@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-06-03
+
+### Changed
+
+- Now requires EverCrops 3.5.1 or newer.
+
+### Fixed
+
+- Rice, tomatoes, budding tomato seedlings, and mushroom colonies could lose a little of their catch-up growth in the very instant they caught up after you'd been away. They now keep all of it.
+- Made sure your Farmer's Delight crops keep being tracked alongside EverCrops 3.5.1's new automatic cleanup, so they're never accidentally forgotten.
+
 ## [1.1.1] - 2026-5-27
 
 ### Fixed
