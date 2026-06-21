@@ -64,6 +64,12 @@ public abstract class BuddingBushBlockMixin extends BushBlock {
             return;
         }
         CropState cropState = existing.get();
+        // Harvested in place (e.g. Harvest With Ease) — reset the growth clock so pending
+        // catch-up isn't re-applied to the replant.
+        if (CropCatchUp.handleInPlaceHarvest(level, pos, cropState, state.getValue(BuddingBushBlock.AGE))) {
+            CropRegistry.put(level, pos, cropState);
+            return;
+        }
         int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, true);
         boolean grewAny = false;
         if (steps > 0) {
