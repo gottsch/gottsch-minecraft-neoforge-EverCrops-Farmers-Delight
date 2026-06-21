@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-06-20
+
+### Changed
+
+- Now requires EverCrops 3.5.3 or newer.
+
+### Fixed
+
+- Fixed the same right-click harvesting issue (e.g. Harvest With Ease) for Farmer's Delight crops — tomatoes, rice, budding tomato seedlings, and mushroom colonies. After being away, harvesting and replanting one of these no longer lets it instantly grow back from leftover catch-up growth.
+
 ## [1.1.3] - 2026-06-06
 
 ### Fixed

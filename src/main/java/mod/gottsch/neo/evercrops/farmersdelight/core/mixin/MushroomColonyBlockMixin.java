@@ -77,6 +77,12 @@ public abstract class MushroomColonyBlockMixin extends BushBlock {
             return;
         }
         CropState cropState = existing.get();
+        // Harvested in place (age dropped without a break/place event) — reset the growth
+        // clock so pending catch-up isn't re-applied to the replant.
+        if (CropCatchUp.handleInPlaceHarvest(level, pos, cropState, state.getValue(MushroomColonyBlock.COLONY_AGE))) {
+            CropRegistry.put(level, pos, cropState);
+            return;
+        }
         int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, false);
         boolean grewAny = false;
         if (steps > 0) {
