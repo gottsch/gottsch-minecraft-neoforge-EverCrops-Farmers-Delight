@@ -17,9 +17,8 @@
  */
 package mod.gottsch.neo.evercrops.farmersdelight.core.mixin;
 
-import mod.gottsch.forge.evercrops.core.persistence.CropCatchUp;
-import mod.gottsch.forge.evercrops.core.persistence.CropRegistry;
-import mod.gottsch.forge.evercrops.core.persistence.CropState;
+import mod.gottsch.forge.evercrops.api.CropState;
+import mod.gottsch.forge.evercrops.api.EverCropsApi;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -44,7 +43,7 @@ import java.util.Optional;
  * {@code AVG_CALL_TICK_INTERVAL * 4 = 5400}.
  *
  * Catch-up mirrors the pattern used by the other FD mixins:
- *   - HEAD inject computes elapsed steps via CropCatchUp and loops the age advance,
+ *   - HEAD inject computes elapsed steps via EverCropsApi and loops the age advance,
  *     re-checking ground conditions and the canCropGrow hook each iteration.
  *   - INVOKE inject keeps lastGrowthGameTime current when vanilla itself grows the colony
  *     (i.e. when no catch-up was applied this tick).
@@ -60,7 +59,7 @@ public abstract class MushroomColonyBlockMixin extends BushBlock {
 
     // 1/4 probability gate inside vanilla randomTick → average 4 call intervals per growth step.
     @Unique
-    private static final int AVG_GROWTH_TICK_INTERVAL = CropCatchUp.AVG_CALL_TICK_INTERVAL * 4; // 5400
+    private static final int AVG_GROWTH_TICK_INTERVAL = EverCropsApi.AVG_CALL_TICK_INTERVAL * 4; // 5400
 
     public MushroomColonyBlockMixin(Properties properties) {
         super(properties);
@@ -71,19 +70,19 @@ public abstract class MushroomColonyBlockMixin extends BushBlock {
                                        RandomSource random, CallbackInfo ci) {
         if (!state.hasProperty(MushroomColonyBlock.COLONY_AGE)) return;
 
-        Optional<CropState> existing = CropRegistry.get(level, pos);
+        Optional<CropState> existing = EverCropsApi.get(level, pos);
         if (existing.isEmpty()) {
-            CropRegistry.put(level, pos, CropCatchUp.createState(level, pos));
+            EverCropsApi.put(level, pos, EverCropsApi.createState(level, pos));
             return;
         }
         CropState cropState = existing.get();
         // Harvested in place (age dropped without a break/place event) — reset the growth
         // clock so pending catch-up isn't re-applied to the replant.
-        if (CropCatchUp.handleInPlaceHarvest(level, pos, cropState, state.getValue(MushroomColonyBlock.COLONY_AGE))) {
-            CropRegistry.put(level, pos, cropState);
+        if (EverCropsApi.handleInPlaceHarvest(level, pos, cropState, state.getValue(MushroomColonyBlock.COLONY_AGE))) {
+            EverCropsApi.put(level, pos, cropState);
             return;
         }
-        int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, false);
+        int steps = EverCropsApi.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, false);
         boolean grewAny = false;
         if (steps > 0) {
             MushroomColonyBlock colonyBlock = (MushroomColonyBlock)(Object) this;
@@ -104,7 +103,7 @@ public abstract class MushroomColonyBlockMixin extends BushBlock {
                 grewAny = true;
             }
         }
-        CropRegistry.put(level, pos, cropState);
+        EverCropsApi.put(level, pos, cropState);
         // Catch-up advanced the colony this tick. Skip vanilla's own randomTick so it can't
         // overwrite the caught-up age (computed from the pre-catch-up state) nor double-write
         // the growth timestamp via the setBlock inject below.
@@ -118,13 +117,13 @@ public abstract class MushroomColonyBlockMixin extends BushBlock {
     public void everCropsFD_randomTick_setBlock(BlockState state, ServerLevel level, BlockPos pos,
                                                 RandomSource random, CallbackInfo ci) {
         if (!state.hasProperty(MushroomColonyBlock.COLONY_AGE)) return;
-        Optional<CropState> cropState = CropRegistry.get(level, pos);
+        Optional<CropState> cropState = EverCropsApi.get(level, pos);
         if (cropState.isPresent()) {
             cropState.get().setLastGrowthGameTime(level.getGameTime())
                     .setLastGrowthLightLevel(level.getRawBrightness(pos, 0));
-            CropRegistry.put(level, pos, cropState.get());
+            EverCropsApi.put(level, pos, cropState.get());
         } else {
-            CropRegistry.put(level, pos, CropCatchUp.createState(level, pos));
+            EverCropsApi.put(level, pos, EverCropsApi.createState(level, pos));
         }
     }
 }

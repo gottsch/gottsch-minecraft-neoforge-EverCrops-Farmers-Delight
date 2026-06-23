@@ -17,9 +17,8 @@
  */
 package mod.gottsch.neo.evercrops.farmersdelight.core.mixin;
 
-import mod.gottsch.forge.evercrops.core.persistence.CropCatchUp;
-import mod.gottsch.forge.evercrops.core.persistence.CropRegistry;
-import mod.gottsch.forge.evercrops.core.persistence.CropState;
+import mod.gottsch.forge.evercrops.api.CropState;
+import mod.gottsch.forge.evercrops.api.EverCropsApi;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -53,7 +52,7 @@ import java.util.Optional;
  *     behaviour (tryBoostingPlantsAboveAndBelow). After our convert the block above is a colony,
  *     so vanilla's own convertMushroomToColony returns false and the boost path takes over
  *     instead — entirely correct vanilla behaviour.
- *   - No INVOKE inject is needed. The callDelta gate in CropCatchUp.beginCatchUp keeps catch-up
+ *   - No INVOKE inject is needed. The callDelta gate in EverCropsApi.beginCatchUp keeps catch-up
  *     dormant while the chunk is loaded (normal random ticks keep callDelta small). The
  *     lastGrowthGameTime staleness accumulated during normal play is benign because the callDelta
  *     gate short-circuits before the growth math runs.
@@ -67,7 +66,7 @@ public abstract class RichSoilBlockMixin extends Block {
 
     // Every randomTick is a potential conversion attempt — no internal probability gate.
     @Unique
-    private static final int AVG_GROWTH_TICK_INTERVAL = CropCatchUp.AVG_CALL_TICK_INTERVAL;
+    private static final int AVG_GROWTH_TICK_INTERVAL = EverCropsApi.AVG_CALL_TICK_INTERVAL;
 
     public RichSoilBlockMixin(Properties properties) {
         super(properties);
@@ -76,13 +75,13 @@ public abstract class RichSoilBlockMixin extends Block {
     @Inject(method = "randomTick", at = @At("HEAD"))
     public void everCropsFD_randomTick(BlockState state, ServerLevel level, BlockPos pos,
                                        RandomSource random, CallbackInfo ci) {
-        Optional<CropState> existing = CropRegistry.get(level, pos);
+        Optional<CropState> existing = EverCropsApi.get(level, pos);
         if (existing.isEmpty()) {
-            CropRegistry.put(level, pos, CropCatchUp.createState(level, pos));
+            EverCropsApi.put(level, pos, EverCropsApi.createState(level, pos));
             return;
         }
         CropState cropState = existing.get();
-        int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, false);
+        int steps = EverCropsApi.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, false);
         if (steps > 0) {
             // Check whether a vanilla mushroom is sitting on top of this block and convert it.
             // beginCatchUp has already updated timestamps regardless of whether a mushroom is
@@ -95,7 +94,7 @@ public abstract class RichSoilBlockMixin extends Block {
                 level.setBlockAndUpdate(abovePos, ((Block) ModBlocks.RED_MUSHROOM_COLONY.get()).defaultBlockState());
             }
         }
-        CropRegistry.put(level, pos, cropState);
+        EverCropsApi.put(level, pos, cropState);
         // Do NOT cancel — let vanilla continue for its plant-boost behaviour.
     }
 }

@@ -17,9 +17,8 @@
  */
 package mod.gottsch.neo.evercrops.farmersdelight.core.mixin;
 
-import mod.gottsch.forge.evercrops.core.persistence.CropCatchUp;
-import mod.gottsch.forge.evercrops.core.persistence.CropRegistry;
-import mod.gottsch.forge.evercrops.core.persistence.CropState;
+import mod.gottsch.forge.evercrops.api.CropState;
+import mod.gottsch.forge.evercrops.api.EverCropsApi;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -58,19 +57,19 @@ public abstract class BuddingBushBlockMixin extends BushBlock {
                                        RandomSource random, CallbackInfo ci) {
         if (!state.hasProperty(BuddingBushBlock.AGE)) return;
 
-        Optional<CropState> existing = CropRegistry.get(level, pos);
+        Optional<CropState> existing = EverCropsApi.get(level, pos);
         if (existing.isEmpty()) {
-            CropRegistry.put(level, pos, CropCatchUp.createState(level, pos));
+            EverCropsApi.put(level, pos, EverCropsApi.createState(level, pos));
             return;
         }
         CropState cropState = existing.get();
         // Harvested in place (e.g. Harvest With Ease) — reset the growth clock so pending
         // catch-up isn't re-applied to the replant.
-        if (CropCatchUp.handleInPlaceHarvest(level, pos, cropState, state.getValue(BuddingBushBlock.AGE))) {
-            CropRegistry.put(level, pos, cropState);
+        if (EverCropsApi.handleInPlaceHarvest(level, pos, cropState, state.getValue(BuddingBushBlock.AGE))) {
+            EverCropsApi.put(level, pos, cropState);
             return;
         }
-        int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, true);
+        int steps = EverCropsApi.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, true);
         boolean grewAny = false;
         if (steps > 0) {
             BlockState currentState = state;
@@ -85,7 +84,7 @@ public abstract class BuddingBushBlockMixin extends BushBlock {
                 }
             }
         }
-        CropRegistry.put(level, pos, cropState);
+        EverCropsApi.put(level, pos, cropState);
         // Catch-up advanced the seedling this tick. Skip vanilla's own randomTick so it
         // can't overwrite the caught-up age (computed from the pre-catch-up state) nor
         // double-write the growth timestamp. The growPastMaxAge() transition still runs
@@ -100,13 +99,13 @@ public abstract class BuddingBushBlockMixin extends BushBlock {
     public void everCropsFD_randomTick_setBlock(BlockState state, ServerLevel level, BlockPos pos,
                                                 RandomSource random, CallbackInfo ci) {
         if (!state.hasProperty(BuddingBushBlock.AGE)) return;
-        Optional<CropState> cropState = CropRegistry.get(level, pos);
+        Optional<CropState> cropState = EverCropsApi.get(level, pos);
         if (cropState.isPresent()) {
             cropState.get().setLastGrowthGameTime(level.getGameTime())
                     .setLastGrowthLightLevel(level.getRawBrightness(pos, 0));
-            CropRegistry.put(level, pos, cropState.get());
+            EverCropsApi.put(level, pos, cropState.get());
         } else {
-            CropRegistry.put(level, pos, CropCatchUp.createState(level, pos));
+            EverCropsApi.put(level, pos, EverCropsApi.createState(level, pos));
         }
     }
 }
