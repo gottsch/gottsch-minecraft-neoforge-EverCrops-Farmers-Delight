@@ -17,9 +17,8 @@
  */
 package mod.gottsch.neo.evercrops.farmersdelight.core.mixin;
 
-import mod.gottsch.forge.evercrops.core.persistence.CropCatchUp;
-import mod.gottsch.forge.evercrops.core.persistence.CropRegistry;
-import mod.gottsch.forge.evercrops.core.persistence.CropState;
+import mod.gottsch.forge.evercrops.api.CropState;
+import mod.gottsch.forge.evercrops.api.EverCropsApi;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -73,19 +72,19 @@ public abstract class TomatoBlockMixin extends CropBlock {
         // → falls through to catch-up. Using || here would incorrectly skip HangingTomatoBlock.
         if (state.hasProperty(TomatoBlock.ROPELOGGED) && state.getValue(TomatoBlock.ROPELOGGED)) return;
 
-        Optional<CropState> existing = CropRegistry.get(level, pos);
+        Optional<CropState> existing = EverCropsApi.get(level, pos);
         if (existing.isEmpty()) {
-            CropRegistry.put(level, pos, CropCatchUp.createState(level, pos));
+            EverCropsApi.put(level, pos, EverCropsApi.createState(level, pos));
             return;
         }
         CropState cropState = existing.get();
         // Harvested in place (e.g. Harvest With Ease) — reset the growth clock so pending
         // catch-up isn't re-applied to the replant.
-        if (CropCatchUp.handleInPlaceHarvest(level, pos, cropState, state.getValue(ageProperty))) {
-            CropRegistry.put(level, pos, cropState);
+        if (EverCropsApi.handleInPlaceHarvest(level, pos, cropState, state.getValue(ageProperty))) {
+            EverCropsApi.put(level, pos, cropState);
             return;
         }
-        int steps = CropCatchUp.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, true);
+        int steps = EverCropsApi.beginCatchUp(level, pos, cropState, AVG_GROWTH_TICK_INTERVAL, true);
         boolean grewAny = false;
         if (steps > 0) {
             BlockState currentState = state;
@@ -100,7 +99,7 @@ public abstract class TomatoBlockMixin extends CropBlock {
                 }
             }
         }
-        CropRegistry.put(level, pos, cropState);
+        EverCropsApi.put(level, pos, cropState);
         // Catch-up advanced the vine this tick. Skip vanilla's own randomTick so it can't
         // overwrite the caught-up age nor double-write the growth timestamp. Fruit growth /
         // rope climbing still runs on the next natural random tick once the vine is mature.
@@ -116,13 +115,13 @@ public abstract class TomatoBlockMixin extends CropBlock {
         // TomatoBlock.VINE_AGE = BlockStateProperties.AGE_3, NOT CropBlock.AGE (AGE_7) — different instances.
         if (!state.hasProperty(TomatoBlock.VINE_AGE)) return;
         if (state.hasProperty(TomatoBlock.ROPELOGGED) && state.getValue(TomatoBlock.ROPELOGGED)) return;
-        Optional<CropState> cropState = CropRegistry.get(level, pos);
+        Optional<CropState> cropState = EverCropsApi.get(level, pos);
         if (cropState.isPresent()) {
             cropState.get().setLastGrowthGameTime(level.getGameTime())
                     .setLastGrowthLightLevel(level.getRawBrightness(pos, 0));
-            CropRegistry.put(level, pos, cropState.get());
+            EverCropsApi.put(level, pos, cropState.get());
         } else {
-            CropRegistry.put(level, pos, CropCatchUp.createState(level, pos));
+            EverCropsApi.put(level, pos, EverCropsApi.createState(level, pos));
         }
     }
 }
